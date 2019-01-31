@@ -5,7 +5,7 @@ by a fully typed key-value storage API
 # UserDefaults
 Using UserDefaults, one might normally do the following:
 
-```
+```swift
 UserDefaults.standard.register(defaults: ["NumberOfCakes": 4])
 let numCakes = UserDefaults.standard.object(forKey: "NumberOfCakes") as? Int
 ```
@@ -19,7 +19,7 @@ Apart from not using a `String` constant for the key, the main problem with the 
 
 It would be much nicer if one were to be able to do the following:
 
-```
+```swift
 struct MyCodableStruct: Codable
 {
     var stuff: Int
