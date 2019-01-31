@@ -1,6 +1,6 @@
 # Introduction
-This is a playground showing how wrap/replace `UserDefaults`
-by a fully typed key-value storage API
+This is a playground showing how hide `UserDefaults`
+behind a fully typed key-value storage API
 
 # UserDefaults
 Using `UserDefaults`, one might normally do the following:
