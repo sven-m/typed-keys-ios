@@ -6,158 +6,152 @@ protocol PropertyListType {}
 
 extension String        : PropertyListType {}
 extension Int           : PropertyListType {}
+extension Int8          : PropertyListType {}
+extension Int16         : PropertyListType {}
+extension Int32         : PropertyListType {}
+extension Int64         : PropertyListType {}
+extension UInt          : PropertyListType {}
+extension UInt8         : PropertyListType {}
+extension UInt16        : PropertyListType {}
+extension UInt32        : PropertyListType {}
+extension UInt64        : PropertyListType {}
+extension Float         : PropertyListType {}
+extension Double        : PropertyListType {}
 extension Bool          : PropertyListType {}
+extension Date          : PropertyListType {}
 extension Array         : PropertyListType where Element: PropertyListType {}
 extension Dictionary    : PropertyListType where Key == String, Value: PropertyListType {}
 extension Data          : PropertyListType {}
 
+/// Base API for string-keyed access to plist values
 protocol PropertyListStoring
 {
-    func object<T>(forKey key: String) -> T? where T: PropertyListType
-    func setValue<T>(_ value: T?, forKey key: String) where T: PropertyListType
+    subscript(key: String) -> Any? { get set }
 }
 
-// MARK: - Typed storage for plist types
-
-struct TypedPropertyListKey<Value: PropertyListType>
+/// A Key struct with a seemingly unused type parameter that is used in the protocols below
+struct TypedKey<T>
 {
     var name: String
 }
 
-protocol TypedPropertyListStoring: PropertyListStoring
+/// Provides storage for plist and Codable types
+protocol TypedKeyValueStoring: PropertyListStoring
 {
-    subscript<Value>(key: TypedPropertyListKey<Value>) -> Value? { get set }
+    subscript<T>(key: TypedKey<T>) -> T? where T: PropertyListType           { get set }
+    subscript<T>(key: TypedKey<T>) -> T? where T: PropertyListType & Codable { get set }
+    subscript<T>(key: TypedKey<T>) -> T? where T: Codable                    { get set }
 }
 
-extension TypedPropertyListStoring
+extension PropertyListStoring
 {
-    subscript<Value>(key: TypedPropertyListKey<Value>) -> Value?
+    subscript<T: PropertyListType>(key: TypedKey<T>) -> T?
     {
         get
         {
-            return object(forKey: key.name) as Value?
+            return self[key.name] as? T
         }
         set
         {
-            setValue(newValue, forKey: key.name)
+            self[key.name] = newValue
         }
     }
-}
-
-// MARK: - Typed storage for codables
-
-struct TypedJSONCodableKey<Value: Codable>
-{
-    var name: String
-}
-
-protocol TypedJSONCodableStoring: PropertyListStoring
-{
-    subscript<Value>(key: TypedJSONCodableKey<Value>) -> Value? { get set }
-}
-
-extension TypedJSONCodableStoring
-{
-    subscript<Value>(key: TypedJSONCodableKey<Value>) -> Value?
+    
+    subscript<T: PropertyListType & Codable>(key: TypedKey<T>) -> T?
     {
         get
         {
-            return (object(forKey: key.name) as Data?).flatMap {
-                try? JSONDecoder().decode(Value.self, from: $0)
+            return self[key.name] as? T
+        }
+        set
+        {
+            self[key.name] = newValue
+        }
+    }
+    
+    subscript<T: Codable>(key: TypedKey<T>) -> T?
+    {
+        get
+        {
+            return (self[key.name] as? Data).flatMap {
+                try? JSONDecoder().decode(T.self, from: $0)
             }
-            
         }
         set
         {
             guard let data = try? JSONEncoder().encode(newValue) else { return }
-            setValue(data, forKey: key.name)
+            self[key.name] = data
         }
     }
 }
 
+
 // MARK: - Extension for UserDefaults
 
-extension UserDefaults: TypedPropertyListStoring, TypedJSONCodableStoring
+extension UserDefaults: TypedKeyValueStoring
 {
-    func object<T>(forKey key: String) -> T? where T : PropertyListType
+    subscript(key: String) -> Any?
     {
-        return object(forKey: key) as? T
-    }
-    
-    func setValue<T>(_ value: T?, forKey key: String) where T : PropertyListType
-    {
-        setValue(value as Any?, forKey: key)
+        get
+        {
+            return object(forKey: key)
+        }
+        set
+        {
+            setValue(newValue, forKey: key)
+        }
     }
 }
 
-// MARK: - Alternative in-memory implementation
-
-class DictionaryPropertyListStorage: TypedPropertyListStoring, TypedJSONCodableStoring
+/// Alternative in-memory implementation
+class DictionaryPropertyListStorage: TypedKeyValueStoring
 {
-    private var storage: [String: Any] = [:]
+    private var dictionary: [String: Any] = [:]
     
-    func object<T>(forKey key: String) -> T? where T : PropertyListType
-    {
-        return storage[key] as? T
-    }
-    
-    func setValue<T>(_ value: T?, forKey key: String) where T : PropertyListType
-    {
-        storage[key] = value
-    }
-}
-
-protocol TypedKeys
-{
-    static func plist<Value: PropertyListType>(key: String,
-                                               type: Value.Type) -> TypedPropertyListKey<Value>
-    static func json<Value: PropertyListType>(key: String,
-                                              type: Value.Type) -> TypedJSONCodableKey<Value>
-}
-
-// MARK: - Static convenience methods provided for more concise key definitions
-
-extension TypedKeys
-{
-    static func plist<Value: PropertyListType>(key: String, type: Value.Type) -> TypedPropertyListKey<Value>
-    {
-        return TypedPropertyListKey(name: key)
-    }
-    
-    static func json<Value: Codable>(key: String, type: Value.Type) -> TypedJSONCodableKey<Value>
-    {
-        return TypedJSONCodableKey(name: key)
+    subscript(key: String) -> Any? {
+        get
+        {
+            return dictionary[key]
+        }
+        set
+        {
+            dictionary[key] = newValue
+        }
     }
 }
 
 
 // MARK: - Usage
 
+/// Some Codable struct
 struct Score: Codable
 {
     var player: String
     var points: Int
 }
 
-
-/// Defined by app code, inherit TypedKeys to get you namespaced static methods
-enum Keys: TypedKeys
+/// Defined by app code
+enum Keys
 {
-    static let numberOfCakes = plist(key: "cake-count", type: Int.self)
-    static let complexStructure = plist(key: "complex-dictionary", type: [String:[Int]].self)
-    static let score = json(key: "highscore", type: Score.self)
+    static let numberOfCakes = TypedKey<Int>(name: "cake-count")
+    static let complexStructure = TypedKey<[String:[Int]]>(name: "complex-dictionary")
+    static let score = TypedKey<Score>(name: "highscore")
 }
 
+// MARK: - Temporary defaults
 
 extension UserDefaults
 {
     private static let playgroundSuiteName = "playground-suite"
     
     static let playground = UserDefaults(suiteName: playgroundSuiteName)!
-    static func cleanup() { self.init().removePersistentDomain(forName: playgroundSuiteName)}
+    static func cleanup()
+    {
+        self.init().removePersistentDomain(forName: playgroundSuiteName)
+    }
 }
 
-var storage: TypedPropertyListStoring & TypedJSONCodableStoring = UserDefaults.playground
+var storage: TypedKeyValueStoring = UserDefaults.playground
 
 storage[Keys.numberOfCakes] = 4
 storage[Keys.numberOfCakes]
@@ -167,6 +161,17 @@ storage[Keys.complexStructure]
 
 storage[Keys.score] = Score(player: "John", points: 3)
 storage[Keys.score]
+// check the string value to see the JSON
 String(data: UserDefaults.playground.data(forKey: Keys.score.name)!, encoding: .utf8)
+
+
+// MARK: - You can spread out the definition of the keys if you want
+extension Keys
+{
+    static let date = TypedKey<Date>(name: "date")
+}
+
+storage[Keys.date] = Date()
+storage[Keys.date]
 
 UserDefaults.cleanup()
