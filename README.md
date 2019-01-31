@@ -1,5 +1,5 @@
 # Introduction
-This is a playground showing how wrap/replace UserDefaults 
+This is a playground showing how wrap/replace `UserDefaults`
 by a fully typed key-value storage API
 
 # UserDefaults
