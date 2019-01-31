@@ -3,7 +3,7 @@ This is a playground showing how wrap/replace `UserDefaults`
 by a fully typed key-value storage API
 
 # UserDefaults
-Using UserDefaults, one might normally do the following:
+Using `UserDefaults`, one might normally do the following:
 
 ```swift
 UserDefaults.standard.register(defaults: ["NumberOfCakes": 4])
