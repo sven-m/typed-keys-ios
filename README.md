@@ -6,11 +6,12 @@ by a fully typed key-value storage API
 Using `UserDefaults`, one might normally do the following:
 
 ```swift
-UserDefaults.standard.register(defaults: ["NumberOfCakes": 4])
-let numCakes = UserDefaults.standard.object(forKey: "NumberOfCakes") as? Int
+let numberOfCakesKey = "NumberOfCakes"
+UserDefaults.standard.register(defaults: [numberOfCakesKey: 4])
+let numCakes = UserDefaults.standard.object(forKey: numberOfCakesKey) as? Int
 ```
 
-Apart from not using a `String` constant for the key, the main problem with the above code is that:
+The main problem with the above code is that:
 
 - you have to cast everywhere you fetch the value
 - the type of the value stored under a key, which usually does not change, is not enforced
